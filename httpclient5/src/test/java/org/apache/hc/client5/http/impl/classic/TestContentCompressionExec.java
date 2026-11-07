@@ -202,7 +202,7 @@ class TestContentCompressionExec {
     @Test
     void testUnknownContentEncoding() throws Exception {
         final ClassicHttpRequest request = new BasicClassicHttpRequest(Method.GET, host, "/");
-        final ClassicHttpResponse response = new BasicClassicHttpResponse(200, "OK");
+        final ClassicHttpResponse response = Mockito.spy(new BasicClassicHttpResponse(200, "OK"));
         final HttpEntity original = EntityBuilder.create().setText("encoded stuff").setContentEncoding("whatever").build();
         response.setEntity(original);
 
@@ -212,6 +212,7 @@ class TestContentCompressionExec {
 
         Assertions.assertThrows(HttpException.class, () ->
                 impl.execute(request, scope, execChain));
+        Mockito.verify(response).close();
     }
 
     @Test

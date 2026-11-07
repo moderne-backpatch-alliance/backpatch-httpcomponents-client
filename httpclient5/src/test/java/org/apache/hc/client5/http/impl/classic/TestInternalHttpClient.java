@@ -34,12 +34,15 @@ import org.apache.hc.client5.http.ClientProtocolException;
 import org.apache.hc.client5.http.HttpRoute;
 import org.apache.hc.client5.http.auth.AuthSchemeFactory;
 import org.apache.hc.client5.http.auth.CredentialsProvider;
+import org.apache.hc.client5.http.classic.ExecChain;
 import org.apache.hc.client5.http.classic.ExecChainHandler;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.cookie.CookieSpecFactory;
 import org.apache.hc.client5.http.cookie.CookieStore;
+import org.apache.hc.client5.http.io.ConnectionEndpoint;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.io.LeaseRequest;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.client5.http.routing.HttpRoutePlanner;
 import org.apache.hc.core5.http.HttpException;
@@ -47,6 +50,8 @@ import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.config.Lookup;
 import org.apache.hc.core5.http.impl.io.HttpRequestExecutor;
 import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
+import org.apache.hc.core5.io.CloseMode;
+import org.apache.hc.core5.util.TimeValue;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -133,6 +138,45 @@ class TestInternalHttpClient {
 
         Assertions.assertThrows(ClientProtocolException.class, () ->
                 client.execute(httpget, response -> null));
+    }
+
+    private void assertEndpointDiscardedOnFailure(final Exception failure, final Class<? extends Exception> expected) throws Exception {
+        final HttpGet httpget = new HttpGet("http://somehost/stuff");
+        final HttpRoute route = new HttpRoute(new HttpHost("somehost", 80));
+        final LeaseRequest leaseRequest = Mockito.mock(LeaseRequest.class);
+        final ConnectionEndpoint endpoint = Mockito.mock(ConnectionEndpoint.class);
+
+        Mockito.when(routePlanner.determineRoute(
+                Mockito.eq(new HttpHost("somehost")),
+                Mockito.any(),
+                Mockito.<HttpClientContext>any())).thenReturn(route);
+        Mockito.when(connManager.lease(Mockito.any(), Mockito.eq(route), Mockito.any(), Mockito.any())).thenReturn(leaseRequest);
+        Mockito.when(leaseRequest.get(Mockito.any())).thenReturn(endpoint);
+        Mockito.when(execChain.execute(Mockito.any(), Mockito.any(), Mockito.any())).thenAnswer(invocation -> {
+            final ExecChain.Scope scope = invocation.getArgument(1);
+            scope.execRuntime.acquireEndpoint(scope.exchangeId, scope.route, null, scope.clientContext);
+            throw failure;
+        });
+
+        Assertions.assertThrows(expected, () -> client.execute(httpget, response -> null));
+
+        Mockito.verify(endpoint).close(CloseMode.IMMEDIATE);
+        Mockito.verify(connManager).release(endpoint, null, TimeValue.ZERO_MILLISECONDS);
+    }
+
+    @Test
+    void testEndpointDiscardedOnHttpException() throws Exception {
+        assertEndpointDiscardedOnFailure(new HttpException("failed"), ClientProtocolException.class);
+    }
+
+    @Test
+    void testEndpointDiscardedOnIOException() throws Exception {
+        assertEndpointDiscardedOnFailure(new IOException("failed"), IOException.class);
+    }
+
+    @Test
+    void testEndpointDiscardedOnRuntimeException() throws Exception {
+        assertEndpointDiscardedOnFailure(new IllegalStateException("failed"), IllegalStateException.class);
     }
 
     @Test
