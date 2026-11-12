@@ -1,0 +1,21 @@
+schema: osera-patch-evidence/0.1.0
+producer: moderne
+release: 5.4.4.1-backpatch-00001
+baseline: v5.4.4+backpatch.baseline
+fixes:
+  - cve: CVE-2026-64607
+    upstream_fix_url: https://github.com/advisories/GHSA-hjcp-jmpx-g3qm
+    advisory_url: https://nvd.nist.gov/vuln/detail/CVE-2026-64607
+    patch_commit_url: https://github.com/moderne-backpatch-alliance/backpatch-httpcomponents-client/commit/fac341e
+    basis: adapted
+    artifacts:
+      - org.apache.httpcomponents.client5:httpclient5
+    note: New in this release; ported onto 5.4.4; fixed at 5.4.4.1-backpatch-00001 (backpatch-httpcomponents-client@fac341e).
+tests:
+  commit: fac341e9c70736c0abbd70f3088b3493815ea0e9
+  command: mvn -B -T1 -pl httpclient5 -am -Dmaven.test.failure.ignore=true clean test
+  runtime: openjdk version 1.8.0_382, Apache Maven 3.9.16
+  report: httpclient5-5.4.4.1-backpatch-00001-tests.zip
+  report_sha256: 098b330d2eeef4634adb167806f104ee4110e3340c694e2b1a5f2624c806de5d
+  result: pass
+  note: 760 tests at the patch commit, 0 of them skipped by the suite, 0 failed, 0 errors.
