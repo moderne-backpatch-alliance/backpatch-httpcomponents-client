@@ -166,35 +166,39 @@ public final class ContentCompressionExec implements ExecChainHandler {
         }
 
         final ClassicHttpResponse response = chain.proceed(request, scope);
-
-        final HttpEntity entity = response.getEntity();
-        // entity can be null in case of 304 Not Modified, 204 No Content or similar
-        // check for zero length entity.
-        if (requestConfig.isContentCompressionEnabled() && entity != null && entity.getContentLength() != 0) {
-            final String contentEncoding = entity.getContentEncoding();
-            if (contentEncoding != null) {
-                final ParserCursor cursor = new ParserCursor(0, contentEncoding.length());
-                final HeaderElement[] codecs = BasicHeaderValueParser.INSTANCE.parseElements(contentEncoding, cursor);
-                if (maxCodecListLen > 0 && codecs.length > maxCodecListLen) {
-                    throw new ProtocolException("Codec list exceeds maximum of " + maxCodecListLen + " elements");
-                }
-                for (final HeaderElement codec : codecs) {
-                    final String codecname = codec.getName().toLowerCase(Locale.ROOT);
-                    final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
-                    if (decoderFactory != null) {
-                        response.setEntity(new DecompressingEntity(response.getEntity(), decoderFactory));
-                        response.removeHeaders(HttpHeaders.CONTENT_LENGTH);
-                        response.removeHeaders(HttpHeaders.CONTENT_ENCODING);
-                        response.removeHeaders(HttpHeaders.CONTENT_MD5);
-                    } else {
-                        if (!"identity".equals(codecname) && !ignoreUnknown) {
-                            throw new HttpException("Unsupported Content-Encoding: " + codec.getName());
+        try {
+            final HttpEntity entity = response.getEntity();
+            // entity can be null in case of 304 Not Modified, 204 No Content or similar
+            // check for zero length entity.
+            if (requestConfig.isContentCompressionEnabled() && entity != null && entity.getContentLength() != 0) {
+                final String contentEncoding = entity.getContentEncoding();
+                if (contentEncoding != null) {
+                    final ParserCursor cursor = new ParserCursor(0, contentEncoding.length());
+                    final HeaderElement[] codecs = BasicHeaderValueParser.INSTANCE.parseElements(contentEncoding, cursor);
+                    if (maxCodecListLen > 0 && codecs.length > maxCodecListLen) {
+                        throw new ProtocolException("Codec list exceeds maximum of " + maxCodecListLen + " elements");
+                    }
+                    for (final HeaderElement codec : codecs) {
+                        final String codecname = codec.getName().toLowerCase(Locale.ROOT);
+                        final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
+                        if (decoderFactory != null) {
+                            response.setEntity(new DecompressingEntity(response.getEntity(), decoderFactory));
+                            response.removeHeaders(HttpHeaders.CONTENT_LENGTH);
+                            response.removeHeaders(HttpHeaders.CONTENT_ENCODING);
+                            response.removeHeaders(HttpHeaders.CONTENT_MD5);
+                        } else {
+                            if (!"identity".equals(codecname) && !ignoreUnknown) {
+                                throw new HttpException("Unsupported Content-Encoding: " + codec.getName());
+                            }
                         }
                     }
                 }
             }
+            return response;
+        } catch (final RuntimeException | HttpException ex) {
+            response.close();
+            throw ex;
         }
-        return response;
     }
 
 }
