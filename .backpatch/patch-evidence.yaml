@@ -1,6 +1,6 @@
 schema: osera-patch-evidence/0.1.0
 producer: moderne
-release: 5.4.4.1-backpatch-00001
+release: 5.4.4.1-backpatch-00002
 baseline: v5.4.4+backpatch.baseline
 fixes:
   - cve: CVE-2026-64607
@@ -10,12 +10,20 @@ fixes:
     basis: adapted
     artifacts:
       - org.apache.httpcomponents.client5:httpclient5
-    note: New in this release; ported onto 5.4.4; fixed at 5.4.4.1-backpatch-00001 (backpatch-httpcomponents-client@fac341e).
+    note: Carried from 5.4.4.1-backpatch-00001; ported onto 5.4.4; fixed at 5.4.4.1-backpatch-00001 (backpatch-httpcomponents-client@fac341e).
+  - cve: CVE-2026-71290
+    upstream_fix_url: https://github.com/apache/httpcomponents-client/commit/2422b6c89aaacb8d25823b7535479a6fb5a09d0d
+    advisory_url: https://nvd.nist.gov/vuln/detail/CVE-2026-71290
+    patch_commit_url: https://github.com/moderne-backpatch-alliance/backpatch-httpcomponents-client/commit/86174c3
+    basis: adapted
+    artifacts:
+      - org.apache.httpcomponents.client5:httpclient5
+    note: New in this release; ported onto 5.4.4; fixed at 5.4.4.1-backpatch-00002 (backpatch-httpcomponents-client@86174c3).
 tests:
-  commit: fac341e9c70736c0abbd70f3088b3493815ea0e9
+  commit: 86174c305ac18940f059c15e79ce289ad7aca5c1
   command: mvn -B -T1 -pl httpclient5 -am -Dmaven.test.failure.ignore=true clean test
   runtime: openjdk version 1.8.0_382, Apache Maven 3.9.16
-  report: httpclient5-5.4.4.1-backpatch-00001-tests.zip
-  report_sha256: 098b330d2eeef4634adb167806f104ee4110e3340c694e2b1a5f2624c806de5d
+  report: httpclient5-5.4.4.1-backpatch-00002-tests.zip
+  report_sha256: d2e38616809007273ecf23558b7438d27d80fe39827e911300989a2b1daf36c0
   result: pass
-  note: 760 tests at the patch commit, 0 of them skipped by the suite, 0 failed, 0 errors.
+  note: 762 tests at the patch commit, 0 of them skipped by the suite, 0 failed, 0 errors.
